@@ -22,8 +22,18 @@ def dependency_check(packages: Iterable[str]) -> Dict[str, bool]:
     """
     status: Dict[str, bool] = {}
     for pkg in packages:
-        spec = importlib.util.find_spec(pkg)
-        status[pkg] = spec is not None
+        try:
+            spec = importlib.util.find_spec(pkg)
+            if spec is not None:
+                status[pkg] = True
+                continue
+        except (ValueError, ModuleNotFoundError):
+            pass
+        try:
+            importlib.metadata.version(pkg)
+            status[pkg] = True
+        except importlib.metadata.PackageNotFoundError:
+            status[pkg] = False
     return status
 
 
@@ -61,10 +71,15 @@ def backup_data() -> Path:
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     if dest.exists():
         raise FileExistsError(f"Backup path already exists: {dest}")
-    if DATA_DIR.exists():
-        shutil.copytree(DATA_DIR, dest)
-    else:
-        dest.mkdir(parents=True, exist_ok=True)
+    dest.mkdir(parents=True, exist_ok=True)
+    for item in DATA_DIR.iterdir():
+        if item.name == "backups":
+            continue
+        target = dest / item.name
+        if item.is_dir():
+            shutil.copytree(item, target)
+        else:
+            shutil.copy2(item, target)
     return dest
 
 
@@ -75,7 +90,19 @@ def restore_backup(backup_path: Path) -> Path:
     backup_path = backup_path.resolve()
     if not backup_path.exists():
         raise FileNotFoundError(f"Backup not found: {backup_path}")
-    if DATA_DIR.exists():
-        shutil.rmtree(DATA_DIR)
-    shutil.copytree(backup_path, DATA_DIR)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    for item in DATA_DIR.iterdir():
+        if item.name == "backups":
+            continue
+        if item.is_dir():
+            shutil.rmtree(item)
+        else:
+            item.unlink()
+    for item in backup_path.iterdir():
+        target = DATA_DIR / item.name
+        if item.is_dir():
+            shutil.copytree(item, target)
+        else:
+            shutil.copy2(item, target)
     return DATA_DIR

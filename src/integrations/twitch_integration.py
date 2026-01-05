@@ -13,7 +13,7 @@ from typing import Any, Optional
 import discord
 from discord.ext import commands
 
-from ..config import (
+from config import (
     TWITCH_ACCESS_TOKEN,
     TWITCH_ANNOUNCE_CHANNEL_ID,
     TWITCH_BROADCASTER_ID,

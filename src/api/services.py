@@ -7,7 +7,7 @@ import asyncio
 from typing import Any, Mapping
 
 from . import api_client, openai_client, OPENAI_MODEL, OPENAI_IMAGE_MODEL
-from ..tokens import get_token
+from tokens import get_token
 
 
 async def fetch_status() -> str:

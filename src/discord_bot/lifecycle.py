@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Iterable, List, Sequence, Tuple
 from discord.ext import commands
 
-from ..integrations.twitch_integration import TwitchIntegration
+from integrations.twitch_integration import TwitchIntegration
 
 # Extend this list with dotted module paths for your cogs/extensions.
 DEFAULT_EXTENSIONS: List[str] = []
@@ -21,7 +21,8 @@ async def on_ready(bot: commands.Bot, twitch: TwitchIntegration, extensions: Seq
     await load_extensions(bot, ext_list)
     if twitch:
         await twitch.start()
-    print(f"Logged in as {bot.user} (id: {bot.user.id})")  # noqa: T201
+    if bot.user:
+        print(f"Logged in as {bot.user} (id: {bot.user.id})")  # noqa: T201
 
 
 async def on_disconnect(bot: commands.Bot):

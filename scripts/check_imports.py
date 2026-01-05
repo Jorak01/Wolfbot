@@ -26,12 +26,13 @@ PACKAGE_MAP = {
 
 
 def _iter_py_files() -> Iterable[Path]:
+    """Iterate over all Python files in src/, tests/, and scripts/."""
     for root, dirs, files in os.walk(ROOT_DIR):
         # Skip virtualenvs and caches.
         dirs[:] = [
             d
             for d in dirs
-            if d not in {".venv", "__pycache__", ".pytest_cache", ".git"}
+            if d not in {".venv", "__pycache__", ".pytest_cache", ".git", "node_modules"}
         ]
         for name in files:
             if name.endswith(".py"):
@@ -72,8 +73,10 @@ def _filter_third_party(modules: Iterable[str]) -> Set[str]:
         if mod in {"src", "scripts"}:
             continue
         # If it's importable as a local module path under src, skip.
-        local_path = ROOT_DIR / "src" / mod
-        if local_path.exists():
+        # Check both as directory and as .py file
+        local_dir = ROOT_DIR / "src" / mod
+        local_file = ROOT_DIR / "src" / f"{mod}.py"
+        if local_dir.exists() or local_file.exists():
             continue
         third_party.add(mod)
     return third_party
@@ -141,6 +144,10 @@ def main() -> int:
     third_party = _filter_third_party(discovered_modules)
     discovered_packages = _modules_to_packages(third_party)
 
+    print(f"Discovered {len(discovered_modules)} total modules")
+    print(f"Found {len(third_party)} third-party modules: {sorted(third_party)}")
+    print(f"Mapped to {len(discovered_packages)} packages: {sorted(discovered_packages)}")
+
     if REQUIREMENTS_PATH.exists():
         existing_lines = REQUIREMENTS_PATH.read_text(encoding="utf-8").splitlines()
     else:
@@ -148,7 +155,11 @@ def main() -> int:
     existing_entries, existing_names = _parse_requirements(existing_lines)
 
     new_packages = {pkg for pkg in discovered_packages if pkg not in existing_names}
-    _write_requirements(existing_entries, new_packages)
+    if new_packages:
+        print(f"Adding {len(new_packages)} new packages to requirements.txt: {sorted(new_packages)}")
+        _write_requirements(existing_entries, new_packages)
+    else:
+        print("No new packages to add to requirements.txt")
 
     # Install missing packages from requirements.
     _, names = _parse_requirements(existing_entries + sorted(new_packages))
@@ -156,7 +167,7 @@ def main() -> int:
     if missing:
         print("Installed missing packages:")
         for pkg in missing:
-            print(f"- {pkg}")
+            print(f"  - {pkg}")
     else:
         print("All required packages are already installed.")
     return 0

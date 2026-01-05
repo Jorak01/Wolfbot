@@ -1,17 +1,17 @@
 import discord
 from discord.ext import commands
 
-from . import integration
-from .config import require_token
-from .discord_bot import analytics, command_handler, lifecycle, maintenance, storage_api, utils_misc
-from .discord_bot.audio import AudioController
-from .discord_bot.config_store import get_guild_config, set_guild_config
-from .discord_bot.games import coin_flip, poll_creator, rps_game, roll_dice
-from .discord_bot.member_roles import (
+import integration
+from config import require_token
+from discord_bot import analytics, command_handler, lifecycle, maintenance, storage_api, utils_misc
+from discord_bot.audio import AudioController
+from discord_bot.config_store import get_guild_config, set_guild_config
+from discord_bot.games import coin_flip, poll_creator, rps_game, roll_dice
+from discord_bot.member_roles import (
     on_member_join as handle_member_join,
     on_member_remove as handle_member_remove,
 )
-from .discord_bot.moderation import (
+from discord_bot.moderation import (
     ban_user as mod_ban_user,
     kick_user as mod_kick_user,
     lock_channel as mod_lock_channel,
@@ -21,10 +21,10 @@ from .discord_bot.moderation import (
     unlock_channel as mod_unlock_channel,
     warn_user as mod_warn_user,
 )
-from .discord_bot.notifications import notify_user, react_to_message, send_announcement
-from .discord_bot.scheduler import temporary_message
-from .discord_bot.security import is_admin, is_moderator
-from .integrations.twitch_integration import TwitchIntegration
+from discord_bot.notifications import notify_user, react_to_message, send_announcement
+from discord_bot.scheduler import temporary_message
+from discord_bot.security import is_admin, is_moderator
+from integrations.twitch_integration import TwitchIntegration
 from scripts.check_imports import main as check_imports_main
 
 intents = discord.Intents.default()

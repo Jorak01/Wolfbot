@@ -5,8 +5,8 @@ Keep this module thin by delegating HTTP details to src/api/.
 
 from typing import Any, Dict, List
 
-from .api import call_api
-from .config import SEARCH_MAX_RESULTS
+from api import call_api
+from config import SEARCH_MAX_RESULTS
 
 
 async def get_status() -> str:
