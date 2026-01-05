@@ -5,13 +5,16 @@ Add new functions in services.py (or other modules) and register them here.
 
 from typing import Any, Awaitable, Callable, Dict
 
-from .services import fetch_status
+from .services import fetch_status, generate_image, search_web
 
 ApiCallable = Callable[..., Awaitable[Any]]
 
 # Simple mapping of name -> async function.
 API_CALLS: Dict[str, ApiCallable] = {
     "status": fetch_status,
+    "search": search_web,
+    "image": generate_image,
+    "generate_image": generate_image,
 }
 
 

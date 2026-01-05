@@ -6,15 +6,34 @@ Baseline Discord bot structure with integration logic separated from the Discord
 ```
 .
 ├─ src/
-│  ├─ bot.py            # Discord entrypoint
-│  ├─ config.py         # Env loading and token validation
-│  ├─ integration.py    # External service / business logic
-│  └─ api/              # Outbound API client(s)
-│     ├─ __init__.py    # Centralized API entrypoint and shared instances
-│     ├─ client.py      # HTTP client wrapper
-│     ├─ services.py    # High-level API calls (per-endpoint functions)
-│     ├─ registry.py    # Register and dispatch API calls by name
-│     └─ tokens.py      # Token registry parsed from env
+│  ├─ bot.py                # Discord entrypoint + commands
+│  ├─ config.py             # Env loading and token validation
+│  ├─ integration.py        # External service / business logic
+│  ├─ discord_bot/          # Bot utilities and helpers
+│  │   ├─ audio.py          # Voice/queue management with yt-dlp + FFmpeg
+│  │   ├─ lifecycle.py      # Startup/shutdown helpers
+│  │   ├─ command_handler.py# Command registries, dispatch, cooldowns
+│  │   ├─ security.py       # Permission helpers
+│  │   ├─ member_roles.py   # Join/leave hooks and role assignment
+│  │   ├─ moderation.py     # Kick/ban/mute/purge utilities
+│  │   ├─ notifications.py  # Announcement/DM/react helpers
+│  │   ├─ messaging.py      # Message send/edit/pin helpers
+│  │   ├─ scheduler.py      # Task scheduling helpers
+│  │   ├─ config_store.py   # JSON-backed guild/user config
+│  │   ├─ storage_api.py    # SQLite, cache, HTTP fetch, retry
+│  │   ├─ maintenance.py    # Backup/restore, dependency/version checks
+│  │   ├─ analytics.py      # Event/usage logging
+│  │   ├─ games.py          # Dice, coin, RPS, poll creation
+│  │   ├─ utils_misc.py     # Duration/UUID/url/format helpers
+│  │   └─ ui_components.py  # Embeds/buttons/dropdowns/modals helpers
+│  ├─ integrations/
+│  │   └─ twitch_integration.py # Twitch <-> Discord monitor, chat relay, moderation
+│  └─ api/                  # Outbound API client(s)
+│     ├─ __init__.py        # Centralized API entrypoint and shared instances
+│     ├─ client.py          # HTTP client wrapper
+│     ├─ services.py        # High-level API calls (per-endpoint functions)
+│     ├─ registry.py        # Register and dispatch API calls by name
+│     └─ tokens.py          # Token registry parsed from env
 │  └─ __init__.py
 ├─ tests/
 │  └─ test_integration.py
@@ -27,23 +46,82 @@ Baseline Discord bot structure with integration logic separated from the Discord
    - Windows: `python -m venv .venv && .\.venv\Scripts\activate`
    - Unix: `python -m venv .venv && source .venv/bin/activate`
 2) Install deps: `pip install -r requirements.txt`
-3) Create `.env` with your bot token:
+3) Install FFmpeg and ensure it is on your PATH for audio playback.
+4) Create `.env` with your bot token and any API keys:
 ```
 DISCORD_TOKEN=your_bot_token_here
+
+# Optional HTTP status stub
 API_BASE_URL=https://api.example.com
 API_KEY=your_optional_api_key
 API_TIMEOUT=10.0
-# Optional: multiple per-service tokens (e.g., "status=tokenA;service2=tokenB")
 API_TOKENS=status=tokenA;service2=tokenB
+
+# OpenAI / Copilot-style art generation
+OPENAI_API_KEY=your_openai_key
+OPENAI_BASE_URL=optional_custom_base
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_IMAGE_MODEL=dall-e-3
+
+# Search result limit (default 5)
+SEARCH_MAX_RESULTS=5
+
+# Twitch integration (chat + live monitoring)
+TWITCH_CLIENT_ID=your_twitch_client_id
+TWITCH_CLIENT_SECRET=your_twitch_client_secret
+TWITCH_ACCESS_TOKEN=oauth_token_with_scopes
+TWITCH_REFRESH_TOKEN=refresh_token_with_scopes
+TWITCH_BROADCASTER_ID=your_twitch_user_id
+TWITCH_CHANNEL_NAME=yourchannel
+TWITCH_GUILD_ID=discord_guild_id
+TWITCH_LIVE_ROLE_ID=discord_role_id_for_live
+TWITCH_ANNOUNCE_CHANNEL_ID=discord_channel_id_for_live_alerts
+TWITCH_EVENT_LOG_CHANNEL_ID=discord_channel_id_for_chat/logs
+TWITCH_CLIPS_CHANNEL_ID=discord_channel_id_for_vods_clips
+TWITCH_REMINDER_CHANNEL_ID=discord_channel_id_for_reminders
+TWITCH_MONITOR_INTERVAL=60
+TWITCH_CHAT_ENABLED=true
 ```
+
+## Commands (high level)
+- `!status` — stubbed status endpoint via `src/integration.py`.
+- `!search <query>` — DuckDuckGo-powered search (top 5 results).
+- `!imagine|!art|!image <prompt>` — ChatGPT-style prompt enhancer + OpenAI image generation. Returns an image URL.
+- Twitch helpers:
+  - `!uptime` — Twitch stream uptime.
+  - `!live` — Show live embed if online.
+  - `!twitchstats|!tstats` — Summary of viewers/peaks/follows/subs.
+  - `!tchat <message>` — Relay message to Twitch chat.
+  - `!followers` / `!subs` / `!streamgame` — Pull Twitch metrics.
+  - `!health` — Twitch/Discord integration health check.
+- Voice/music (YouTube/Spotify via yt-dlp + FFmpeg):
+  - `!join` — join your current voice channel.
+  - `!play|!p <url or search>` — queue a track; supports YouTube/Spotify URLs or search terms.
+  - `!skip` — skip the current track.
+  - `!stop` — stop playback and clear the queue.
+  - `!np` — show what is playing.
+  - `!leave` — disconnect the bot.
+ - Moderation/admin:
+   - `!warn`, `!mute <duration>`, `!kick`, `!ban`, `!unban <user_id>`, `!purge <n>`, `!lock`, `!unlock`
+   - `!reloadext`, `!shutdown` (manage_guild)
+   - `!backup`, `!restore <backup_name>` (admin)
+   - `!setwelcome #channel`, `!setleave #channel`
+ - Fun: `!roll <expr>`, `!coin`, `!rps <choice>`, `!poll question | opt1 | opt2`
+ - Notifications: `!announce <text>`, `!dm <user_id> <text>`, `!react <message_id> <emoji>`, `!tempmsg <duration> <text>`
+ - HTTP utility: `!fetchjson <url>` (truncated JSON)
+
+## Twitch integration highlights
+- Stream monitoring: live/offline detection, uptime, category, peak viewers, live/end notifications, presence update, optional live role assignment.
+- Chat relay: relay Discord → Twitch chat via `!tchat`, Twitch → Discord mirror, simple Twitch command handling/sync.
+- Community & moderation: follower/sub alerts, active viewer tracking, ban/timeout helpers, mod status check, mod-role sync stub.
+- Monetization hooks: bits/subs/resubs/gifted subs/hype train trackers and leaderboards.
+- Channel points: placeholder listeners for redemptions with custom reward handler and cooldown tracker.
+- Automation: schedule reminders, daily checks, auto-post VOD/clip links, health check, token refresh, rate-limit handler.
+- Discord UX: streaming embeds, presence updates, stub slash/button/dropdown handlers, owner/scope validation helpers.
 
 ## Run
 - Start the bot from the repo root: `python -m src.bot`
-- Use `!status` in any server where the bot is invited to see the stub integration response.
+- Invite the bot to your server, then use the commands above.
 
 ## Tests
-- Run `pytest` from the repo root to exercise the integration stub.
-
-## Next steps
-- Replace `get_status` in `src/integration.py` with real API calls or business logic.
-- Add more commands or cogs in `src/bot.py` while keeping integrations isolated in their own module(s).
+- Run `python -m pytest` from the repo root to exercise the integration stub.

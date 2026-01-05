@@ -3,3 +3,7 @@ python-dotenv
 httpx
 pytest-asyncio
 pytest
+openai
+duckduckgo-search
+yt-dlp
+websockets
