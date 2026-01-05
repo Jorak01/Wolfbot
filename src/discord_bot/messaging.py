@@ -35,7 +35,8 @@ async def bulk_delete(channel: discord.TextChannel, message_ids: Iterable[int]) 
             continue
     if not messages:
         return []
-    return await channel.delete_messages(messages)
+    await channel.delete_messages(messages)
+    return messages
 
 
 async def pin_message(message: discord.Message):

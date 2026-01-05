@@ -5,6 +5,7 @@ Architecture / maintenance utilities.
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import importlib.metadata
 import shutil
 import time

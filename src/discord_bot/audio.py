@@ -4,13 +4,14 @@ Minimal voice controller for YouTube/Spotify playback using yt-dlp + FFmpeg.
 
 import asyncio
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 import discord
 from discord.ext import commands
 import yt_dlp
 
-YTDL_FORMAT_OPTIONS = {
+# YouTube-DL format options with proper type annotation
+YTDL_FORMAT_OPTIONS: Dict[str, Any] = {
     "format": "bestaudio/best",
     "noplaylist": True,
     "quiet": True,
@@ -36,7 +37,7 @@ class GuildAudioState:
     def __init__(self):
         self.queue: asyncio.Queue[Track] = asyncio.Queue()
         self.voice: Optional[discord.VoiceClient] = None
-        self.voice_channel: Optional[discord.VoiceChannel] = None
+        self.voice_channel: Optional[discord.VoiceChannel | discord.StageChannel] = None
         self.text_channel: Optional[discord.abc.Messageable] = None
         self.current: Optional[Track] = None
         self.play_lock = asyncio.Lock()
@@ -55,7 +56,7 @@ class AudioController:
         return self._states[guild_id]
 
     def _existing_voice(self, guild: discord.Guild) -> Optional[discord.VoiceClient]:
-        return discord.utils.get(self.bot.voice_clients, guild=guild)
+        return cast(Optional[discord.VoiceClient], discord.utils.get(self.bot.voice_clients, guild=guild))
 
     async def join(self, ctx: commands.Context) -> discord.VoiceClient:
         """Join the caller's voice channel."""
@@ -72,7 +73,8 @@ class AudioController:
         state.text_channel = ctx.channel
 
         existing = state.voice or discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
-        if existing and existing.is_connected():
+        # Ensure we have a VoiceClient before checking is_connected
+        if existing and isinstance(existing, discord.VoiceClient) and existing.is_connected():
             state.voice = existing
             if existing.channel != voice_channel:
                 await existing.move_to(voice_channel)
@@ -147,7 +149,7 @@ class AudioController:
                 if not state.voice_channel:
                     return
                 existing = self._existing_voice(state.voice_channel.guild)
-                if existing and existing.is_connected():
+                if existing and isinstance(existing, discord.VoiceClient) and existing.is_connected():
                     state.voice = existing
                     if existing.channel != state.voice_channel:
                         await existing.move_to(state.voice_channel)
@@ -188,7 +190,7 @@ class AudioController:
     async def _resolve_track(self, query: str) -> Track:
         """Use yt-dlp to resolve YouTube/Spotify URLs or search terms."""
         def _extract():
-            with yt_dlp.YoutubeDL(YTDL_FORMAT_OPTIONS) as ytdl:
+            with yt_dlp.YoutubeDL(YTDL_FORMAT_OPTIONS) as ytdl:  # type: ignore[arg-type]
                 return ytdl.extract_info(query, download=False)
 
         try:
@@ -198,6 +200,9 @@ class AudioController:
 
         if not info:
             raise RuntimeError("No results for that query.")
+
+        # Type assertion for Pylance - info is a Dict[str, Any] at this point
+        info = cast(Dict[str, Any], info)
 
         if "entries" in info:
             entries = [entry for entry in info.get("entries") or [] if entry]

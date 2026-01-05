@@ -96,6 +96,8 @@ def validate_command_permissions(target) -> bool:
             return True
         if target.channel is None:
             return False
+        if not isinstance(target.author, discord.Member):
+            return False
         perms = target.channel.permissions_for(target.author)
         return perms.send_messages
     if isinstance(target, discord.Interaction):

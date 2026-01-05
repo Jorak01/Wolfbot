@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 import integration
-from config import require_token
+from .config import require_token
 from discord_bot import analytics, command_handler, lifecycle, maintenance, storage_api, utils_misc
 from discord_bot.audio import AudioController
 from discord_bot.config_store import get_guild_config, set_guild_config

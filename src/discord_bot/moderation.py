@@ -20,7 +20,7 @@ async def warn_user(member: discord.Member, reason: str):
 async def mute_user(member: discord.Member, duration: int, reason: str | None = None):
     """Apply a timed timeout (mute) using Discord's timeout feature."""
     until = discord.utils.utcnow() + dt.timedelta(seconds=duration)
-    await member.edit(timeout=until, reason=reason or "Muted")
+    await member.edit(timed_out_until=until, reason=reason or "Muted")
     return f"Muted {member.display_name} for {duration} seconds."
 
 
@@ -39,9 +39,9 @@ async def ban_user(member: discord.Member, reason: str | None = None, delete_mes
 
 
 async def unban_user(guild: discord.Guild, user_id: int, reason: str | None = None):
-    user = await guild.fetch_user(user_id)
+    user = discord.Object(id=user_id)
     await guild.unban(user, reason=reason)
-    return f"Unbanned {user}."
+    return f"Unbanned user {user_id}."
 
 
 async def purge_messages(channel: discord.TextChannel, amount: int, reason: str | None = None):
