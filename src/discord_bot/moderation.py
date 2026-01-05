@@ -4,8 +4,7 @@ Moderation utilities for Discord servers.
 
 from __future__ import annotations
 
-import asyncio
-from typing import Optional
+import datetime as dt
 
 import discord
 
@@ -20,7 +19,7 @@ async def warn_user(member: discord.Member, reason: str):
 
 async def mute_user(member: discord.Member, duration: int, reason: str | None = None):
     """Apply a timed timeout (mute) using Discord's timeout feature."""
-    until = discord.utils.utcnow() + discord.utils.timedelta(seconds=duration)
+    until = discord.utils.utcnow() + dt.timedelta(seconds=duration)
     await member.edit(timeout=until, reason=reason or "Muted")
     return f"Muted {member.display_name} for {duration} seconds."
 

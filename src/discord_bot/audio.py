@@ -54,6 +54,9 @@ class AudioController:
             self._states[guild_id] = GuildAudioState()
         return self._states[guild_id]
 
+    def _existing_voice(self, guild: discord.Guild) -> Optional[discord.VoiceClient]:
+        return discord.utils.get(self.bot.voice_clients, guild=guild)
+
     async def join(self, ctx: commands.Context) -> discord.VoiceClient:
         """Join the caller's voice channel."""
         if not ctx.guild:
@@ -92,11 +95,19 @@ class AudioController:
         """Add a track to the queue and start playback if idle."""
         if not ctx.guild:
             raise RuntimeError("This command can only be used in a server.")
+        if not isinstance(ctx.author, discord.Member):
+            raise RuntimeError("Voice channel lookup failed.")
 
         state = self._state(ctx.guild.id)
         state.text_channel = ctx.channel
         if ctx.author.voice and ctx.author.voice.channel:
             state.voice_channel = ctx.author.voice.channel
+        if not state.voice_channel:
+            raise RuntimeError("Join a voice channel first.")
+
+        query = (query or "").strip()
+        if not query:
+            raise RuntimeError("Provide a URL or search term to play.")
 
         if not state.voice or not state.voice.is_connected():
             await self.join(ctx)
@@ -133,10 +144,15 @@ class AudioController:
 
         async with state.play_lock:
             if state.voice is None or not state.voice.is_connected():
-                if state.voice_channel:
-                    state.voice = await state.voice_channel.connect()
-                else:
+                if not state.voice_channel:
                     return
+                existing = self._existing_voice(state.voice_channel.guild)
+                if existing and existing.is_connected():
+                    state.voice = existing
+                    if existing.channel != state.voice_channel:
+                        await existing.move_to(state.voice_channel)
+                else:
+                    state.voice = await state.voice_channel.connect()
 
             if state.voice.is_playing() or state.queue.empty():
                 return
@@ -147,6 +163,8 @@ class AudioController:
             def _after_playback(error: Exception | None):
                 # Schedule next track inside the event loop.
                 coro = self._handle_after(guild_id, error)
+                if self.bot.loop.is_closed():
+                    return
                 asyncio.run_coroutine_threadsafe(coro, self.bot.loop)
 
             audio_source = discord.PCMVolumeTransformer(
@@ -173,10 +191,19 @@ class AudioController:
             with yt_dlp.YoutubeDL(YTDL_FORMAT_OPTIONS) as ytdl:
                 return ytdl.extract_info(query, download=False)
 
-        info = await asyncio.to_thread(_extract)
+        try:
+            info = await asyncio.to_thread(_extract)
+        except Exception as exc:
+            raise RuntimeError(f"Failed to resolve track: {exc}") from exc
 
-        if "entries" in info and info["entries"]:
-            info = info["entries"][0]
+        if not info:
+            raise RuntimeError("No results for that query.")
+
+        if "entries" in info:
+            entries = [entry for entry in info.get("entries") or [] if entry]
+            if not entries:
+                raise RuntimeError("No results for that query.")
+            info = entries[0]
 
         title = info.get("title") or "Unknown title"
         stream_url = info.get("url") or query

@@ -40,6 +40,9 @@ async def sync_roles(member: discord.Member, desired_role_ids: list[int]):
     """
     current_ids = {r.id for r in member.roles}
     desired = set(desired_role_ids)
+    # Never try to remove the @everyone role.
+    if member.guild and member.guild.default_role:
+        desired.add(member.guild.default_role.id)
     to_add = desired - current_ids
     to_remove = current_ids - desired
     added = []

@@ -4,7 +4,7 @@ Centralized command handling utilities for prefix, slash, and context menu flows
 
 from __future__ import annotations
 
-from typing import Awaitable, Callable, Dict, Iterable, Optional
+from typing import Awaitable, Callable, Dict, Iterable
 
 import discord
 from discord.ext import commands
@@ -47,6 +47,8 @@ async def handle_prefix_command(ctx: commands.Context):
     handler = PREFIX_COMMANDS.get(name)
     if not handler:
         return
+    if not ctx.author:
+        return
     if not validate_command_permissions(ctx):
         await ctx.send("You do not have permission to run this command.")
         return
@@ -63,11 +65,11 @@ async def handle_slash_command(interaction: discord.Interaction):
     if not handler:
         return
     if not validate_command_permissions(interaction):
-        await interaction.response.send_message("Permission denied.", ephemeral=True)
+        await _send_interaction_message(interaction, "Permission denied.", ephemeral=True)
         return
     user_id = interaction.user.id if interaction.user else 0
     if not cooldown_check(user_id, name):
-        await interaction.response.send_message("On cooldown.", ephemeral=True)
+        await _send_interaction_message(interaction, "On cooldown.", ephemeral=True)
         return
     await handler(interaction)
 
@@ -79,7 +81,7 @@ async def handle_context_menu(interaction: discord.Interaction):
     if not handler:
         return
     if not validate_command_permissions(interaction):
-        await interaction.response.send_message("Permission denied.", ephemeral=True)
+        await _send_interaction_message(interaction, "Permission denied.", ephemeral=True)
         return
     await handler(interaction)
 
@@ -90,6 +92,10 @@ def validate_command_permissions(target) -> bool:
     Extend with role checks as needed.
     """
     if isinstance(target, commands.Context):
+        if target.guild is None:
+            return True
+        if target.channel is None:
+            return False
         perms = target.channel.permissions_for(target.author)
         return perms.send_messages
     if isinstance(target, discord.Interaction):
@@ -97,6 +103,8 @@ def validate_command_permissions(target) -> bool:
             return True
         member = target.user
         if isinstance(member, discord.Member):
+            if target.channel is None:
+                return False
             perms = target.channel.permissions_for(member)
             return perms.send_messages
     return False
@@ -126,3 +134,15 @@ async def autocomplete_handler(interaction: discord.Interaction, value: str):
     if not handler:
         return []
     return await handler(interaction, value)
+
+
+async def _send_interaction_message(
+    interaction: discord.Interaction,
+    content: str,
+    *,
+    ephemeral: bool = True,
+):
+    if interaction.response.is_done():
+        await interaction.followup.send(content, ephemeral=ephemeral)
+    else:
+        await interaction.response.send_message(content, ephemeral=ephemeral)

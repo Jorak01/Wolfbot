@@ -292,7 +292,7 @@ async def health(ctx: commands.Context):
 async def reloadext(ctx: commands.Context, *extensions: str):
     """Reload configured extensions (manage_guild only)."""
     targets = extensions or tuple(lifecycle.DEFAULT_EXTENSIONS)
-    reloaded, failed = lifecycle.reload_extensions(bot, targets)
+    reloaded, failed = await lifecycle.reload_extensions(bot, targets)
     parts = []
     if reloaded:
         parts.append(f"Reloaded: {', '.join(reloaded)}")

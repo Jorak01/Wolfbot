@@ -5,8 +5,6 @@ Lifecycle helpers to centralize Discord bot startup/shutdown and extension manag
 from __future__ import annotations
 
 from typing import Iterable, List, Sequence, Tuple
-
-import discord
 from discord.ext import commands
 
 from ..integrations.twitch_integration import TwitchIntegration
@@ -20,7 +18,7 @@ async def on_ready(bot: commands.Bot, twitch: TwitchIntegration, extensions: Seq
     Bot startup hook: load extensions and start Twitch sidecar.
     """
     ext_list = list(extensions) if extensions is not None else DEFAULT_EXTENSIONS
-    load_extensions(bot, ext_list)
+    await load_extensions(bot, ext_list)
     if twitch:
         await twitch.start()
     print(f"Logged in as {bot.user} (id: {bot.user.id})")  # noqa: T201
@@ -58,7 +56,9 @@ async def health_check(bot: commands.Bot, twitch: TwitchIntegration | None = Non
     return f"Discord ready: {discord_ok}; {twitch_status}"
 
 
-def load_extensions(bot: commands.Bot, extensions: Iterable[str]) -> Tuple[list[str], list[tuple[str, str]]]:
+async def load_extensions(
+    bot: commands.Bot, extensions: Iterable[str]
+) -> Tuple[list[str], list[tuple[str, str]]]:
     """
     Load a set of extensions. Returns (loaded, failed[(name, error)]).
     """
@@ -68,14 +68,16 @@ def load_extensions(bot: commands.Bot, extensions: Iterable[str]) -> Tuple[list[
         if ext in bot.extensions:
             continue
         try:
-            bot.load_extension(ext)
+            await bot.load_extension(ext)
             loaded.append(ext)
         except Exception as exc:
             failed.append((ext, str(exc)))
     return loaded, failed
 
 
-def reload_extensions(bot: commands.Bot, extensions: Iterable[str]) -> Tuple[list[str], list[tuple[str, str]]]:
+async def reload_extensions(
+    bot: commands.Bot, extensions: Iterable[str]
+) -> Tuple[list[str], list[tuple[str, str]]]:
     """
     Reload a set of extensions. Returns (reloaded, failed[(name, error)]).
     """
@@ -84,9 +86,9 @@ def reload_extensions(bot: commands.Bot, extensions: Iterable[str]) -> Tuple[lis
     for ext in extensions:
         try:
             if ext in bot.extensions:
-                bot.reload_extension(ext)
+                await bot.reload_extension(ext)
             else:
-                bot.load_extension(ext)
+                await bot.load_extension(ext)
             reloaded.append(ext)
         except Exception as exc:
             failed.append((ext, str(exc)))
