@@ -21,7 +21,7 @@ PACKAGE_MAP = {
     "discord": "discord.py",
     "dotenv": "python-dotenv",
     "duckduckgo_search": "duckduckgo-search",
-    "yt_dlp": "yt-dlp",
+    "yt_dlp": "yt-dlp"
 }
 
 

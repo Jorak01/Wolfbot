@@ -2,9 +2,13 @@
 """Test the API Manager"""
 
 import sys
-sys.path.insert(0, 'src')
+from pathlib import Path
 
-from api_manager import api_manager
+# Add project root to path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+from src.api_manager import api_manager
 
 print("=== API Manager Test ===\n")
 
