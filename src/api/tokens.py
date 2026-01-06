@@ -4,15 +4,13 @@ Now redirects to api_manager.
 """
 from __future__ import annotations
 
-from typing import Mapping, Optional
-
 from api_manager import api_manager
 
 
 __all__ = ["TOKEN_ENTRIES", "all_tokens", "get_token"]
 
 # Backward compatibility - redirect to api_manager
-def get_token(name: str, *, fallback_to_default: bool = True) -> Optional[str]:
+def get_token(name: str, *, fallback_to_default: bool = True) -> str | None:
     """
     Return the token for a given service name.
     Now delegates to api_manager.
@@ -21,7 +19,7 @@ def get_token(name: str, *, fallback_to_default: bool = True) -> Optional[str]:
     return api_manager.get_token(name, fallback=fallback)
 
 
-def all_tokens() -> Mapping[str, str]:
+def all_tokens() -> dict[str, str]:
     """Expose a read-only view of configured tokens."""
     return {
         name: config.auth_token or ""
