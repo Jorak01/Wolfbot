@@ -121,6 +121,16 @@ async def on_ready():
             await spotify.start()
         except Exception as e:
             print(f"⚠ Warning: Spotify start failed: {e}")
+    
+    # Load and sync slash commands
+    try:
+        from discord_bot.slash_commands import create_slash_commands
+        create_slash_commands(bot, {'twitch': twitch, 'spotify': spotify})
+        await bot.tree.sync()
+        print("✅ Slash commands synced")
+    except Exception as e:
+        print(f"⚠ Warning: Slash command sync failed: {e}")
+    
     print("✅ Bot is ready!")
 
 
