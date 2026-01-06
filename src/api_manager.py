@@ -63,6 +63,17 @@ class APIManager:
         self._clients: Dict[str, Any] = {}
         self._load_default_apis()
     
+    @staticmethod
+    def _safe_int(value: str, default: int = 0) -> int:
+        """Safely convert string to int, returning default if conversion fails."""
+        try:
+            # Check if value looks like a placeholder
+            if not value or any(char.isalpha() for char in value.replace("_", "")):
+                return default
+            return int(value)
+        except (ValueError, TypeError):
+            return default
+    
     def _load_default_apis(self):
         """Load all APIs from environment variables."""
         
@@ -98,13 +109,13 @@ class APIManager:
                 "refresh_token": os.getenv("TWITCH_REFRESH_TOKEN", ""),
                 "broadcaster_id": os.getenv("TWITCH_BROADCASTER_ID", ""),
                 "channel_name": os.getenv("TWITCH_CHANNEL_NAME", ""),
-                "guild_id": int(os.getenv("TWITCH_GUILD_ID", "0") or 0),
-                "live_role_id": int(os.getenv("TWITCH_LIVE_ROLE_ID", "0") or 0),
-                "announce_channel_id": int(os.getenv("TWITCH_ANNOUNCE_CHANNEL_ID", "0") or 0),
-                "clips_channel_id": int(os.getenv("TWITCH_CLIPS_CHANNEL_ID", "0") or 0),
-                "reminder_channel_id": int(os.getenv("TWITCH_REMINDER_CHANNEL_ID", "0") or 0),
-                "event_log_channel_id": int(os.getenv("TWITCH_EVENT_LOG_CHANNEL_ID", "0") or 0),
-                "monitor_interval": int(os.getenv("TWITCH_MONITOR_INTERVAL", "60") or 60),
+                "guild_id": self._safe_int(os.getenv("TWITCH_GUILD_ID", "0"), 0),
+                "live_role_id": self._safe_int(os.getenv("TWITCH_LIVE_ROLE_ID", "0"), 0),
+                "announce_channel_id": self._safe_int(os.getenv("TWITCH_ANNOUNCE_CHANNEL_ID", "0"), 0),
+                "clips_channel_id": self._safe_int(os.getenv("TWITCH_CLIPS_CHANNEL_ID", "0"), 0),
+                "reminder_channel_id": self._safe_int(os.getenv("TWITCH_REMINDER_CHANNEL_ID", "0"), 0),
+                "event_log_channel_id": self._safe_int(os.getenv("TWITCH_EVENT_LOG_CHANNEL_ID", "0"), 0),
+                "monitor_interval": self._safe_int(os.getenv("TWITCH_MONITOR_INTERVAL", "60"), 60),
                 "chat_enabled": os.getenv("TWITCH_CHAT_ENABLED", "true").lower() in {"1", "true", "yes", "on"},
                 "description": "Twitch API and Integration Settings"
             }

@@ -1,12 +1,25 @@
 """
 Integration layer for external services or business logic.
-Keep this module thin by delegating HTTP details to src/api/.
 """
 
 from typing import Any, Dict, List
 
-from api import call_api
 from config import SEARCH_MAX_RESULTS
+
+
+async def call_api(endpoint: str, **kwargs) -> Any:
+    """
+    Placeholder API call function.
+    Implement actual API calls based on your needs.
+    """
+    # Placeholder implementation
+    if endpoint == "status":
+        return "OK"
+    elif endpoint == "search":
+        return []
+    elif endpoint == "generate_image":
+        return {"url": "", "revised_prompt": kwargs.get("prompt", "")}
+    return {}
 
 
 async def get_status() -> str:

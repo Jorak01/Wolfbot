@@ -6,6 +6,34 @@ This file provides backward compatibility for existing code.
 import os
 from api_manager import api_manager
 
+__all__ = [
+    "require_token",
+    "DISCORD_TOKEN",
+    "API_BASE_URL",
+    "API_KEY",
+    "API_TIMEOUT",
+    "API_TOKENS_RAW",
+    "OPENAI_API_KEY",
+    "OPENAI_BASE_URL",
+    "OPENAI_MODEL",
+    "OPENAI_IMAGE_MODEL",
+    "SEARCH_MAX_RESULTS",
+    "TWITCH_CLIENT_ID",
+    "TWITCH_CLIENT_SECRET",
+    "TWITCH_ACCESS_TOKEN",
+    "TWITCH_REFRESH_TOKEN",
+    "TWITCH_BROADCASTER_ID",
+    "TWITCH_CHANNEL_NAME",
+    "TWITCH_LIVE_ROLE_ID",
+    "TWITCH_GUILD_ID",
+    "TWITCH_ANNOUNCE_CHANNEL_ID",
+    "TWITCH_CLIPS_CHANNEL_ID",
+    "TWITCH_REMINDER_CHANNEL_ID",
+    "TWITCH_MONITOR_INTERVAL",
+    "TWITCH_CHAT_ENABLED",
+    "TWITCH_EVENT_LOG_CHANNEL_ID",
+]
+
 # Backward compatibility - expose values from api_manager
 DISCORD_TOKEN = api_manager.get_token("discord") or ""
 API_BASE_URL = api_manager.get_base_url("generic") or ""

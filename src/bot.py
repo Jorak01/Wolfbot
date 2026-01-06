@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 
 import integration
-from .config import require_token
+from api_manager import require_token
 from discord_bot import analytics, command_handler, lifecycle, maintenance, storage_api, utils_misc
 from discord_bot.audio import AudioController
 from discord_bot.config_store import get_guild_config, set_guild_config
@@ -25,7 +25,15 @@ from discord_bot.notifications import notify_user, react_to_message, send_announ
 from discord_bot.scheduler import temporary_message
 from discord_bot.security import is_admin, is_moderator
 from integrations.twitch_integration import TwitchIntegration
-from scripts.check_imports import main as check_imports_main
+
+# Optional import for check_imports
+try:
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+    from scripts.check_imports import main as check_imports_main
+except ImportError:
+    check_imports_main = None
 
 intents = discord.Intents.default()
 intents.message_content = True  # Enable for prefix commands
@@ -60,7 +68,8 @@ def _mod_check(ctx: commands.Context) -> bool:
 
 @bot.event
 async def on_ready():
-    check_imports_main()
+    if check_imports_main:
+        check_imports_main()
     await lifecycle.on_ready(bot, twitch)
 
 
