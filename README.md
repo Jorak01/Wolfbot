@@ -6,40 +6,56 @@ Baseline Discord bot structure with integration logic separated from the Discord
 ```
 .
 ├─ src/
-│  ├─ bot.py                # Discord entrypoint + commands
-│  ├─ config.py             # Env loading and token validation
-│  ├─ integration.py        # External service / business logic
-│  ├─ discord_bot/          # Bot utilities and helpers
-│  │   ├─ audio.py          # Voice/queue management with yt-dlp + FFmpeg
-│  │   ├─ lifecycle.py      # Startup/shutdown helpers
-│  │   ├─ command_handler.py# Command registries, dispatch, cooldowns
-│  │   ├─ security.py       # Permission helpers
-│  │   ├─ member_roles.py   # Join/leave hooks and role assignment
-│  │   ├─ moderation.py     # Kick/ban/mute/purge utilities
-│  │   ├─ notifications.py  # Announcement/DM/react helpers
-│  │   ├─ messaging.py      # Message send/edit/pin helpers
-│  │   ├─ scheduler.py      # Task scheduling helpers
-│  │   ├─ config_store.py   # JSON-backed guild/user config
-│  │   ├─ storage_api.py    # SQLite, cache, HTTP fetch, retry
-│  │   ├─ maintenance.py    # Backup/restore, dependency/version checks
-│  │   ├─ analytics.py      # Event/usage logging
-│  │   ├─ games.py          # Dice, coin, RPS, poll creation
-│  │   ├─ utils_misc.py     # Duration/UUID/url/format helpers
-│  │   └─ ui_components.py  # Embeds/buttons/dropdowns/modals helpers
+│  ├─ bot.py                   # Discord entrypoint + commands
+│  ├─ config.py                # Env loading and token validation
+│  ├─ integration.py           # External service / business logic
+│  ├─ api_manager.py           # Centralized API management and token handling
+│  ├─ __init__.py
+│  ├─ discord_bot/             # Bot utilities and helpers
+│  │   ├─ __init__.py
+│  │   ├─ analytics.py         # Event/usage logging
+│  │   ├─ command_handler.py   # Command registries, dispatch, cooldowns
+│  │   ├─ config_store.py      # JSON-backed guild/user config
+│  │   ├─ games.py             # Dice, coin, RPS, poll creation
+│  │   ├─ lifecycle.py         # Startup/shutdown helpers
+│  │   ├─ maintenance.py       # Backup/restore, dependency/version checks
+│  │   ├─ member_roles.py      # Join/leave hooks and role assignment
+│  │   ├─ messaging.py         # Message send/edit/pin helpers
+│  │   ├─ moderation.py        # Kick/ban/mute/purge utilities
+│  │   ├─ notifications.py     # Announcement/DM/react helpers
+│  │   ├─ scheduler.py         # Task scheduling and temporary messages
+│  │   ├─ security.py          # Permission helpers
+│  │   ├─ storage_api.py       # SQLite, cache, HTTP fetch, retry
+│  │   ├─ ui_components.py     # Embeds/buttons/dropdowns/modals helpers
+│  │   └─ utils_misc.py        # Duration/UUID/url/format helpers
 │  ├─ integrations/
-│  │   ├─ twitch_integration.py  # Twitch <-> Discord monitor, chat relay, moderation
-│  │   └─ spotify_integration.py # Spotify API wrapper with voice playback support
-│  └─ api/                  # Outbound API client(s)
-│     ├─ __init__.py        # Centralized API entrypoint and shared instances
-│     ├─ client.py          # HTTP client wrapper
-│     ├─ services.py        # High-level API calls (per-endpoint functions)
-│     ├─ registry.py        # Register and dispatch API calls by name
-│     └─ tokens.py          # Token registry parsed from env
-│  └─ __init__.py
+│  │   ├─ __init__.py
+│  │   ├─ spotify_integration.py  # Spotify API + voice playback with queue
+│  │   └─ twitch_integration.py   # Twitch <-> Discord monitor, chat relay
+│  ├─ api/                     # API client structure (currently unused)
+│  └─ data/                    # Data storage directory
+├─ scripts/
+│  └─ check_imports.py         # Import validation and dependency checker
 ├─ tests/
-│  └─ test_integration.py
+│  ├─ check_discord_bot.py     # Discord bot validation tests
+│  ├─ check_syntax.py          # Syntax checker
+│  ├─ test_api_manager.py      # API manager tests
+│  ├─ test_config_store.py     # Config store tests
+│  ├─ test_games.py            # Games module tests
+│  ├─ test_integration.py      # Integration tests
+│  ├─ test_scheduler.py        # Scheduler tests
+│  ├─ test_utils_misc.py       # Utilities tests
+│  ├─ validate_all.py          # Comprehensive validation
+│  └─ verify_env_integration.py # Environment integration tests
+├─ .env.template               # Environment variables template
+├─ .gitignore
+├─ API_MANAGER_GUIDE.md        # API manager documentation
+├─ CHECK_IMPORTS_DOCUMENTATION.md  # Import checker docs
+├─ MUSIC_PLAYBACK_GUIDE.md     # Music playback comprehensive guide
+├─ README.md
 ├─ requirements.txt
-└─ .gitignore
+├─ SETUP_GUIDE.md              # Setup instructions
+└─ SPOTIFY_SETUP_GUIDE.md      # Spotify integration setup
 ```
 
 ## Setup
