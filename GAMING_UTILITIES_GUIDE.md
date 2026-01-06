@@ -8,6 +8,8 @@ This guide covers all gaming-related commands for D&D, MTG, and other tabletop R
 - [Combat Tools](#combat-tools)
 - [Random Generators](#random-generators)
 - [MTG Tools](#mtg-tools)
+- [D&D 5e API Integration](#dd-5e-api-integration)
+- [External Integrations](#external-integrations)
 
 ---
 
@@ -232,6 +234,146 @@ Or with 'x' notation:
 - Basic deck validation
 - Displays up to 25 cards (shows count if more)
 
+### MTG Card Lookup
+**Command:** `!mtgcard <card_name>` (aliases: `!card`, `!mtg`)
+
+Look up a Magic: The Gathering card from the Scryfall database.
+
+**Examples:**
+```
+!mtgcard Lightning Bolt
+!card Black Lotus
+!mtg Counterspell
+```
+
+**Output:**
+- Card name and mana cost
+- Type line
+- Oracle text
+- Power/Toughness (for creatures)
+- Card image
+- Set information
+- Scryfall link
+
+**Features:**
+- Fuzzy name matching
+- Supports double-faced cards
+- Shows latest printing
+- High-quality card images
+- No API key required
+
+### Random MTG Card
+**Command:** `!randomcard` (aliases: `!randommtg`)
+
+Get a random Magic: The Gathering card from Scryfall.
+
+**Example:**
+```
+!randomcard
+```
+
+**Output:**
+- Same format as card lookup
+- Truly random from entire database
+- Great for challenge decks or inspiration
+
+---
+
+## D&D 5e API Integration
+
+Powered by the Open5e API for official D&D 5e SRD content.
+
+### Spell Lookup
+**Command:** `!dndspell <spell_name>` (aliases: `!spell`, `!5espell`)
+
+Look up a D&D 5th edition spell with full details.
+
+**Examples:**
+```
+!dndspell Fireball
+!spell Cure Wounds
+!5espell Magic Missile
+```
+
+**Spell Information Includes:**
+- Spell name and level
+- School of magic
+- Casting time
+- Range and duration
+- Components (V, S, M)
+- Material components (if any)
+- Full description
+- At higher levels (if applicable)
+- Classes that can cast it
+- Concentration requirement
+- Ritual casting availability
+
+**Features:**
+- Fuzzy name matching
+- Complete SRD spell list
+- Formatted for readability
+- No API key required
+
+### Monster Lookup
+**Command:** `!dndmonster <monster_name>` (aliases: `!monster`, `!5emonster`)
+
+Look up a D&D 5th edition monster stat block.
+
+**Examples:**
+```
+!dndmonster Dragon
+!monster Goblin
+!5emonster Beholder
+```
+
+**Monster Stat Block Includes:**
+- Monster name, size, and type
+- Armor Class and Hit Points
+- Speed and ability scores
+- Saving throws and skills
+- Damage resistances/immunities
+- Senses and languages
+- Challenge Rating (CR) and XP
+- Special abilities
+- Actions
+- Legendary actions (if any)
+
+**Features:**
+- Complete SRD monster list
+- Formatted stat blocks
+- Search by partial name
+- No API key required
+
+---
+
+## External Integrations
+
+### GitHub Repository Info
+**Command:** `!github <owner> <repo>` (aliases: `!repo`, `!ghrepo`)
+
+Get information about a GitHub repository.
+
+**Examples:**
+```
+!github discord discordpy
+!repo python cpython
+!ghrepo tensorflow tensorflow
+```
+
+**Repository Info Includes:**
+- Repository name and description
+- Star count and fork count
+- Watchers and open issues
+- Programming language
+- Creation date and last update
+- Default branch and license
+- Repository URL
+
+**Features:**
+- Real-time data from GitHub API
+- Support for all public repositories
+- Optional GitHub token for higher rate limits
+
 ---
 
 ## Tips & Tricks
@@ -269,6 +411,34 @@ Or with 'x' notation:
 | `!quest` | Quest hook | `!quest` |
 | `!name` | Fantasy name | `!name` |
 | `!deck` | Parse MTG deck | `!deck 4 Lightning Bolt` |
+| `!mtgcard` | MTG card lookup | `!mtgcard Lightning Bolt` |
+| `!randomcard` | Random MTG card | `!randomcard` |
+| `!dndspell` | D&D spell lookup | `!dndspell Fireball` |
+| `!dndmonster` | D&D monster lookup | `!dndmonster Goblin` |
+| `!github` | GitHub repo info | `!github discord discordpy` |
+
+---
+
+## 🔌 API Sources & Setup
+
+### Scryfall API (MTG Cards)
+- **Website**: https://scryfall.com/
+- **No API key required** - Free to use
+- **Features**: Complete MTG card database, images, pricing data
+- **Documentation**: https://scryfall.com/docs/api
+
+### Open5e API (D&D 5e Content)
+- **Website**: https://open5e.com/
+- **No API key required** - Free SRD content
+- **Features**: Spells, monsters, classes, equipment from official D&D 5e SRD
+- **Documentation**: https://api.open5e.com/
+
+### GitHub API
+- **Website**: https://api.github.com/
+- **Optional token** in `.env` for higher rate limits
+- **Features**: Repository information, releases, contributors
+- **Rate Limit**: 60 requests/hour (5000 with token)
+- **Setup**: Add `GITHUB_TOKEN=your_token` to `.env` file
 
 ---
 
@@ -277,11 +447,13 @@ Or with 'x' notation:
 Planned features for future updates:
 - [ ] Warhammer 40K roster validation
 - [ ] Expanded loot tables with magic item properties
-- [ ] More MTG integrations (price checking, legality)
+- [ ] MTG card price tracking and alerts
+- [ ] MTG deck legality checker by format
 - [ ] Custom encounter templates
 - [ ] Character sheet storage and management
-- [ ] Spell lookup and reference
-- [ ] Monster stat blocks
+- [ ] D&D equipment and magic item lookups
+- [ ] D&D class and race information
+- [ ] Custom loot table creation
 
 ---
 

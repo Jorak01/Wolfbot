@@ -13,11 +13,17 @@ Baseline Discord bot structure with integration logic separated from the Discord
 │  ├─ __init__.py
 │  ├─ discord_bot/             # Bot utilities and helpers
 │  │   ├─ __init__.py
+│  │   ├─ admin_tools.py       # Role assignment (buttons/reactions), audit logs
 │  │   ├─ analytics.py         # Event/usage logging
+│  │   ├─ automod.py           # Spam detection, raid protection, content filtering
 │  │   ├─ command_handler.py   # Command registries, dispatch, cooldowns
+│  │   ├─ community_features.py # Karma, giveaways, events, confessions
 │  │   ├─ config_store.py      # JSON-backed guild/user config
 │  │   ├─ games.py             # Dice, coin, RPS, poll creation
+│  │   ├─ gaming_utilities.py  # D&D tools, initiative tracker, loot generator
+│  │   ├─ leveling_system.py   # XP tracking, level-up, role rewards
 │  │   ├─ lifecycle.py         # Startup/shutdown helpers
+│  │   ├─ logging_system.py    # Message logging (delete/edit), log channels
 │  │   ├─ maintenance.py       # Backup/restore, dependency/version checks
 │  │   ├─ member_roles.py      # Join/leave hooks and role assignment
 │  │   ├─ messaging.py         # Message send/edit/pin helpers
@@ -27,13 +33,18 @@ Baseline Discord bot structure with integration logic separated from the Discord
 │  │   ├─ security.py          # Permission helpers
 │  │   ├─ storage_api.py       # SQLite, cache, HTTP fetch, retry
 │  │   ├─ ui_components.py     # Embeds/buttons/dropdowns/modals helpers
-│  │   └─ utils_misc.py        # Duration/UUID/url/format helpers
+│  │   ├─ utils_misc.py        # Duration/UUID/url/format helpers
+│  │   ├─ warning_system.py    # Warning/strike system with auto-escalation
+│  │   └─ welcome_system.py    # Welcome/farewell messages with buttons
 │  ├─ integrations/
 │  │   ├─ __init__.py
+│  │   ├─ ai_integration.py       # AI chatbot with memory & personas
+│  │   ├─ external_apis.py        # MTG, D&D, GitHub, AI providers
 │  │   ├─ spotify_integration.py  # Spotify API + voice playback with queue
 │  │   └─ twitch_integration.py   # Twitch <-> Discord monitor, chat relay
-│  ├─ api/                     # API client structure (currently unused)
-│  └─ data/                    # Data storage directory
+│  ├─ api/                     # API client structure
+│  │   └─ tokens.py            # Token management
+│  └─ data/                    # Data storage directory (SQLite databases)
 ├─ scripts/
 │  └─ check_imports.py         # Import validation and dependency checker
 ├─ tests/
@@ -106,46 +117,144 @@ SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
 SPOTIFY_REFRESH_TOKEN=your_spotify_refresh_token
 ```
 
-## Commands (high level)
-- `!status` — stubbed status endpoint via `src/integration.py`.
-- `!search <query>` — DuckDuckGo-powered search (top 5 results).
-- `!imagine|!art|!image <prompt>` — ChatGPT-style prompt enhancer + OpenAI image generation. Returns an image URL.
-- Twitch helpers:
-  - `!uptime` — Twitch stream uptime.
-  - `!live` — Show live embed if online.
-  - `!twitchstats|!tstats` — Summary of viewers/peaks/follows/subs.
-  - `!tchat <message>` — Relay message to Twitch chat.
-  - `!followers` / `!subs` / `!streamgame` — Pull Twitch metrics.
-  - `!health` — Twitch/Discord integration health check.
-- Spotify integration:
-  - `!spotify|!sp|!nowlistening` — Show what's currently playing on your Spotify account.
-  - `!spotifysearch|!spsearch <query>` — Search for tracks on Spotify.
-  - `!toptracks [timeframe]` — Show your top tracks (short/medium/long).
-  - `!topartists [timeframe]` — Show your top artists (short/medium/long).
-  - `!playlists|!myplaylists` — Show your Spotify playlists.
-- Voice/music playback (Spotify search + Discord voice):
-  - `!join|!connect` — Join your current voice channel.
-  - `!leave|!disconnect|!dc` — Leave voice channel and clear queue.
-  - `!play|!p <query>` — Search and play a track (auto-joins voice).
-  - `!pause` — Pause current playback.
-  - `!resume|!unpause` — Resume paused playback.
-  - `!skip|!next|!s` — Skip current track.
-  - `!stop` — Stop playback and clear queue.
-  - `!loop|!repeat <mode>` — Set loop mode (off/track/queue).
-  - `!volume|!vol|!v <0-100>` — Set playback volume.
-  - `!queue|!q` — Display current queue with rich embed.
-  - `!nowplaying|!np|!current` — Show currently playing track.
-  - `!clearqueue|!cq|!clear` — Clear the queue.
-  - `!remove|!rm <position>` — Remove track from queue by position.
-  - `!shuffle` — Shuffle the queue.
- - Moderation/admin:
-   - `!warn`, `!mute <duration>`, `!kick`, `!ban`, `!unban <user_id>`, `!purge <n>`, `!lock`, `!unlock`
-   - `!reloadext`, `!shutdown` (manage_guild)
-   - `!backup`, `!restore <backup_name>` (admin)
-   - `!setwelcome #channel`, `!setleave #channel`
- - Fun: `!roll <expr>`, `!coin`, `!rps <choice>`, `!poll question | opt1 | opt2`
- - Notifications: `!announce <text>`, `!dm <user_id> <text>`, `!react <message_id> <emoji>`, `!tempmsg <duration> <text>`
- - HTTP utility: `!fetchjson <url>` (truncated JSON)
+## Commands Overview
+
+### 🔍 General & Utility
+- `!status` — Integration status check
+- `!search <query>` — DuckDuckGo-powered web search
+- `!imagine|!art|!image <prompt>` — AI image generation via OpenAI DALL-E
+- `!health` — System health check
+- `!apistatus|!apis|!checkapis` — Check status of all API integrations
+- `!fetchjson <url>` — Fetch and display JSON from URL
+
+### 📺 Twitch Integration
+- `!uptime` — Stream uptime
+- `!live` — Show live stream embed
+- `!twitchstats|!tstats` — Viewer stats, peaks, follows, subs
+- `!tchat <message>` — Relay message to Twitch chat
+- `!followers` — Follower count
+- `!subs` — Subscriber count
+- `!streamgame` — Current game/category
+
+### 🎵 Spotify & Music
+**Account Info:**
+- `!spotify|!sp|!nowlistening` — Show currently playing track
+- `!spotifysearch|!spsearch <query>` — Search Spotify catalog
+- `!toptracks [timeframe]` — Your top tracks (short/medium/long)
+- `!topartists [timeframe]` — Your top artists
+- `!playlists|!myplaylists` — Your Spotify playlists
+
+**Voice Playback:**
+- `!join|!connect` — Join voice channel
+- `!leave|!disconnect|!dc` — Leave voice channel
+- `!play|!p <query>` — Play track (auto-joins voice)
+- `!pause` — Pause playback
+- `!resume|!unpause` — Resume playback
+- `!skip|!next|!s` — Skip current track
+- `!stop` — Stop and clear queue
+- `!loop|!repeat <mode>` — Loop mode (off/track/queue)
+- `!volume|!vol|!v <0-100>` — Set volume
+- `!queue|!q` — Show queue
+- `!nowplaying|!np|!current` — Currently playing
+- `!clearqueue|!cq|!clear` — Clear queue
+- `!remove|!rm <position>` — Remove track from queue
+- `!shuffle` — Shuffle queue
+
+### 🤖 AI Chatbot
+- `!ai|!ask|!chat <message>` — Chat with AI
+- `!remember <key> <value>` — Store personal memory
+- `!forget <key>` — Forget a memory
+- `!memories [@user]` — View memories
+- `!clearmemories` — Clear all memories
+- `!lore <key> <value>` — Add server lore (mod+)
+- `!listlore` — View all lore
+- `!forgetlore <key>` — Remove lore (mod+)
+- `!persona <name>` — Set AI personality (mod+)
+- `!personas` — List available personas
+- `!createpersona <name> <prompt>` — Create custom persona (admin)
+- `!deletepersona <name>` — Delete persona (admin)
+- `!clearcontext` — Clear conversation history (mod+)
+- `!aisettings` — View AI configuration
+- `!ainsfwfilter <true|false>` — Toggle NSFW filter (admin)
+- `!aicooldown <seconds>` — Set cooldown (admin)
+
+### 🛡️ Moderation
+**Warning System:**
+- `!warn <member> <reason>` — Issue warning
+- `!warnings <member>` — View warnings
+- `!clearwarnings <member>` — Clear all warnings
+- `!removewarn <id>` — Remove specific warning
+- `!warnleaderboard|!warnlb` — Warning leaderboard
+
+**Actions:**
+- `!mute <member> <duration>` — Mute user
+- `!kick <member> [reason]` — Kick member
+- `!ban <member> [reason]` — Ban member
+- `!unban <user_id>` — Unban user
+- `!purge <amount>` — Delete messages
+- `!lock` — Lock channel
+- `!unlock` — Unlock channel
+- `!raidmode <on|off|status>` — Raid protection
+
+**Logging:**
+- `!setlogchannel <channel>` — Set log channel (admin)
+- `!viewlogs [type] [limit]` — View message logs
+
+### ⭐ Leveling System
+- `!rank|!level|!xp [@member]` — View rank/level
+- `!leaderboard|!lb|!top` — Server leaderboard
+- `!setlevelrole <level> <role>` — Set level reward role (mod+)
+
+### 🎉 Community Features
+**Karma System:**
+- `!karma|!rep [@member]` — View karma
+- `!givekarma|!+rep <member> [reason]` — Give karma
+- `!karmaleaderboard|!karmalb` — Karma leaderboard
+
+**Events & Activities:**
+- `!giveaway|!gstart <duration> <winners> <prize>` — Create giveaway (mod+)
+- `!event <title> <time> [description]` — Create event
+- `!confess|!confession <content>` — Anonymous confession
+- `!serverstats|!serverinfo` — Server statistics
+
+### 🎲 Gaming Utilities
+**Dice & Random:**
+- `!roll <expression>` — Basic dice roll
+- `!droll|!dr <expression>` — Advanced dice with advantage/disadvantage
+- `!coin` — Flip coin
+- `!rps <choice>` — Rock paper scissors
+- `!poll <question | option1 | option2>` — Create poll
+
+**D&D Tools:**
+- `!stats|!abilities [method]` — Generate ability scores
+- `!encounter <level> [size]` — Generate encounter
+- `!initiative|!init <action>` — Track initiative
+- `!loot|!treasure [rarity] [count]` — Generate loot
+- `!npc` — Random NPC generator
+- `!quest` — Random quest hook
+- `!name` — Random fantasy name
+- `!dndspell|!spell <name>` — Look up D&D spell
+- `!dndmonster|!monster <name>` — Look up D&D monster
+
+**MTG Tools:**
+- `!mtgcard|!card <name>` — Look up MTG card
+- `!randomcard` — Random MTG card
+- `!deck <decklist>` — Parse MTG decklist
+
+### 🔧 Admin Tools
+- `!announce <message>` — Server announcement (mod+)
+- `!dm <user_id> <message>` — DM a user (mod+)
+- `!react <message_id> <emoji>` — Add reaction to message (mod+)
+- `!tempmsg <duration> <message>` — Temporary message (mod+)
+- `!setwelcome <channel>` — Set welcome channel (mod+)
+- `!setleave <channel>` — Set leave channel (mod+)
+- `!backup` — Backup bot data (admin)
+- `!restore <name>` — Restore from backup (admin)
+- `!reloadext` — Reload extensions (admin)
+- `!shutdown` — Shutdown bot (admin)
+
+### 🌐 External APIs
+- `!github|!repo <owner> <repo>` — GitHub repository info
 
 ## Twitch integration highlights
 - Stream monitoring: live/offline detection, uptime, category, peak viewers, live/end notifications, presence update, optional live role assignment.
@@ -170,6 +279,27 @@ SPOTIFY_REFRESH_TOKEN=your_spotify_refresh_token
 - Rich embeds: Beautiful queue displays with track info, duration, loop status, and volume indicators.
 
 See [MUSIC_PLAYBACK_GUIDE.md](MUSIC_PLAYBACK_GUIDE.md) for detailed music playback documentation.
+
+## 📚 Documentation
+
+Comprehensive guides are available for all major features:
+
+### Core Guides
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup instructions and troubleshooting
+- **[API_MANAGER_GUIDE.md](API_MANAGER_GUIDE.md)** - API token management and configuration
+- **[README.md](README.md)** - This file - overview and quick reference
+
+### Feature-Specific Guides
+- **[ADMIN_MODERATION_GUIDE.md](ADMIN_MODERATION_GUIDE.md)** - Moderation, warnings, auto-mod, logging, role management
+- **[LEVELING_SYSTEM_GUIDE.md](LEVELING_SYSTEM_GUIDE.md)** - XP system, ranks, leaderboards, level rewards
+- **[COMMUNITY_FEATURES_GUIDE.md](COMMUNITY_FEATURES_GUIDE.md)** - Karma, giveaways, events, confessions, server stats
+- **[AI_CHATBOT_GUIDE.md](AI_CHATBOT_GUIDE.md)** - AI chat, memory system, personas, safety features
+- **[GAMING_UTILITIES_GUIDE.md](GAMING_UTILITIES_GUIDE.md)** - D&D tools, MTG cards, dice rolling, external APIs
+- **[MUSIC_PLAYBACK_GUIDE.md](MUSIC_PLAYBACK_GUIDE.md)** - Spotify integration, voice playback, queue management
+- **[SPOTIFY_SETUP_GUIDE.md](SPOTIFY_SETUP_GUIDE.md)** - Detailed Spotify API setup instructions
+
+### Developer Guides
+- **[CHECK_IMPORTS_DOCUMENTATION.md](CHECK_IMPORTS_DOCUMENTATION.md)** - Import validation and dependency checking
 
 ## Run
 - Start the bot from the repo root: `python -m src.bot`
