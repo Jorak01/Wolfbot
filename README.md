@@ -27,7 +27,8 @@ Baseline Discord bot structure with integration logic separated from the Discord
 │  │   ├─ utils_misc.py     # Duration/UUID/url/format helpers
 │  │   └─ ui_components.py  # Embeds/buttons/dropdowns/modals helpers
 │  ├─ integrations/
-│  │   └─ twitch_integration.py # Twitch <-> Discord monitor, chat relay, moderation
+│  │   ├─ twitch_integration.py  # Twitch <-> Discord monitor, chat relay, moderation
+│  │   └─ spotify_integration.py # Spotify API wrapper with voice playback support
 │  └─ api/                  # Outbound API client(s)
 │     ├─ __init__.py        # Centralized API entrypoint and shared instances
 │     ├─ client.py          # HTTP client wrapper
@@ -81,6 +82,12 @@ TWITCH_CLIPS_CHANNEL_ID=discord_channel_id_for_vods_clips
 TWITCH_REMINDER_CHANNEL_ID=discord_channel_id_for_reminders
 TWITCH_MONITOR_INTERVAL=60
 TWITCH_CHAT_ENABLED=true
+
+# Spotify integration (music search and playback)
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+SPOTIFY_REDIRECT_URI=http://localhost:8888/callback
+SPOTIFY_REFRESH_TOKEN=your_spotify_refresh_token
 ```
 
 ## Commands (high level)
@@ -94,13 +101,27 @@ TWITCH_CHAT_ENABLED=true
   - `!tchat <message>` — Relay message to Twitch chat.
   - `!followers` / `!subs` / `!streamgame` — Pull Twitch metrics.
   - `!health` — Twitch/Discord integration health check.
-- Voice/music (YouTube/Spotify via yt-dlp + FFmpeg):
-  - `!join` — join your current voice channel.
-  - `!play|!p <url or search>` — queue a track; supports YouTube/Spotify URLs or search terms.
-  - `!skip` — skip the current track.
-  - `!stop` — stop playback and clear the queue.
-  - `!np` — show what is playing.
-  - `!leave` — disconnect the bot.
+- Spotify integration:
+  - `!spotify|!sp|!nowlistening` — Show what's currently playing on your Spotify account.
+  - `!spotifysearch|!spsearch <query>` — Search for tracks on Spotify.
+  - `!toptracks [timeframe]` — Show your top tracks (short/medium/long).
+  - `!topartists [timeframe]` — Show your top artists (short/medium/long).
+  - `!playlists|!myplaylists` — Show your Spotify playlists.
+- Voice/music playback (Spotify search + Discord voice):
+  - `!join|!connect` — Join your current voice channel.
+  - `!leave|!disconnect|!dc` — Leave voice channel and clear queue.
+  - `!play|!p <query>` — Search and play a track (auto-joins voice).
+  - `!pause` — Pause current playback.
+  - `!resume|!unpause` — Resume paused playback.
+  - `!skip|!next|!s` — Skip current track.
+  - `!stop` — Stop playback and clear queue.
+  - `!loop|!repeat <mode>` — Set loop mode (off/track/queue).
+  - `!volume|!vol|!v <0-100>` — Set playback volume.
+  - `!queue|!q` — Display current queue with rich embed.
+  - `!nowplaying|!np|!current` — Show currently playing track.
+  - `!clearqueue|!cq|!clear` — Clear the queue.
+  - `!remove|!rm <position>` — Remove track from queue by position.
+  - `!shuffle` — Shuffle the queue.
  - Moderation/admin:
    - `!warn`, `!mute <duration>`, `!kick`, `!ban`, `!unban <user_id>`, `!purge <n>`, `!lock`, `!unlock`
    - `!reloadext`, `!shutdown` (manage_guild)
@@ -118,6 +139,21 @@ TWITCH_CHAT_ENABLED=true
 - Channel points: placeholder listeners for redemptions with custom reward handler and cooldown tracker.
 - Automation: schedule reminders, daily checks, auto-post VOD/clip links, health check, token refresh, rate-limit handler.
 - Discord UX: streaming embeds, presence updates, stub slash/button/dropdown handlers, owner/scope validation helpers.
+
+## Spotify integration highlights
+- Music search: Search Spotify catalog, view track details with artist, album, duration, and preview URLs.
+- User stats: View your top tracks and artists with customizable timeframes (4 weeks, 6 months, all time).
+- Playlist management: Browse your Spotify playlists with track counts and owner info.
+- Now playing: Display currently playing tracks from your Spotify account with rich embeds.
+- Voice playback: Full Discord voice channel integration with queue management.
+- Queue system: Add multiple tracks, view queue with rich embeds, remove/shuffle tracks, track requester info.
+- Playback controls: Play, pause, resume, skip, stop with complete state management.
+- Loop modes: Loop individual tracks, entire queue, or disable looping.
+- Volume control: Adjustable playback volume (0-100%) with real-time updates.
+- Auto-join: Bot automatically joins your voice channel when you use play commands.
+- Rich embeds: Beautiful queue displays with track info, duration, loop status, and volume indicators.
+
+See [MUSIC_PLAYBACK_GUIDE.md](MUSIC_PLAYBACK_GUIDE.md) for detailed music playback documentation.
 
 ## Run
 - Start the bot from the repo root: `python -m src.bot`

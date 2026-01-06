@@ -102,7 +102,7 @@ def daily_task_runner(callback: Callback, *, hour: int = 0, minute: int = 0, sec
     return task_id
 
 
-async def temporary_message(channel: discord.abc.Messageable, content: str, duration: float):
+async def temporary_message(channel: discord.abc.Messageable, content: str, duration: float) -> None:
     """
     Send a message and delete it after `duration` seconds.
     """

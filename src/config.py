@@ -32,6 +32,10 @@ __all__ = [
     "TWITCH_MONITOR_INTERVAL",
     "TWITCH_CHAT_ENABLED",
     "TWITCH_EVENT_LOG_CHANNEL_ID",
+    "SPOTIFY_CLIENT_ID",
+    "SPOTIFY_CLIENT_SECRET",
+    "SPOTIFY_REDIRECT_URI",
+    "SPOTIFY_REFRESH_TOKEN",
 ]
 
 # Backward compatibility - expose values from api_manager
@@ -68,6 +72,14 @@ TWITCH_REMINDER_CHANNEL_ID = api_manager.get_extra("twitch", "reminder_channel_i
 TWITCH_MONITOR_INTERVAL = api_manager.get_extra("twitch", "monitor_interval", 60)
 TWITCH_CHAT_ENABLED = api_manager.get_extra("twitch", "chat_enabled", False)
 TWITCH_EVENT_LOG_CHANNEL_ID = api_manager.get_extra("twitch", "event_log_channel_id", 0)
+
+
+# Spotify settings
+_spotify_config = api_manager.get_api_config("spotify")
+SPOTIFY_CLIENT_ID = _spotify_config.client_id if _spotify_config else ""
+SPOTIFY_CLIENT_SECRET = _spotify_config.client_secret if _spotify_config else ""
+SPOTIFY_REDIRECT_URI = api_manager.get_extra("spotify", "redirect_uri", "http://localhost:8888/callback")
+SPOTIFY_REFRESH_TOKEN = api_manager.get_extra("spotify", "refresh_token", "")
 
 
 def require_token() -> str:

@@ -4,7 +4,6 @@ from discord.ext import commands
 import integration
 from api_manager import require_token
 from discord_bot import analytics, command_handler, lifecycle, maintenance, storage_api, utils_misc
-from discord_bot.audio import AudioController
 from discord_bot.config_store import get_guild_config, set_guild_config
 from discord_bot.games import coin_flip, poll_creator, rps_game, roll_dice
 from discord_bot.member_roles import (
@@ -24,23 +23,28 @@ from discord_bot.moderation import (
 from discord_bot.notifications import notify_user, react_to_message, send_announcement
 from discord_bot.scheduler import temporary_message
 from discord_bot.security import is_admin, is_moderator
+from integrations.spotify_integration import SpotifyIntegration
 from integrations.twitch_integration import TwitchIntegration
 
 # Optional import for check_imports
 try:
-    import sys
     import os
+    import sys
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
     from scripts.check_imports import main as check_imports_main
 except ImportError:
     check_imports_main = None
 
+# Initialize bot with intents
 intents = discord.Intents.default()
 intents.message_content = True  # Enable for prefix commands
-intents.voice_states = True
+intents.members = True  # Enable for member events
+
 bot = commands.Bot(command_prefix="!", intents=intents)
-audio = AudioController(bot)
+
+# Initialize integrations
 twitch = TwitchIntegration(bot)
+spotify = SpotifyIntegration(bot)
 
 
 def _get_channel_from_config(
@@ -71,6 +75,7 @@ async def on_ready():
     if check_imports_main:
         check_imports_main()
     await lifecycle.on_ready(bot, twitch)
+    await spotify.start()
 
 
 @bot.event
@@ -164,77 +169,9 @@ async def imagine(ctx: commands.Context, *, prompt: str):
     await ctx.send(text[:1990])
 
 
-@bot.command(name="join")
-async def join(ctx: commands.Context):
-    """Have the bot join your current voice channel."""
-    try:
-        await audio.join(ctx)
-    except Exception as exc:
-        await ctx.send(f"Could not join: {exc}")
-
-
-@bot.command(name="play", aliases=["p"])
-async def play(ctx: commands.Context, *, query: str):
-    """
-    Queue a YouTube/Spotify URL or search term for playback.
-    Requires FFmpeg installed on the host.
-    """
-    if not ctx.guild:
-        await ctx.send("This command can only be used in a server.")
-        return
-
-    try:
-        track = await audio.enqueue(ctx, query)
-    except Exception as exc:
-        await ctx.send(f"Could not play that: {exc}")
-        return
-
-    await ctx.send(f"Queued **{track.title}** ({track.webpage_url})")
-
-
-@bot.command(name="skip")
-async def skip(ctx: commands.Context):
-    """Skip the current track."""
-    if not ctx.guild:
-        await ctx.send("This command can only be used in a server.")
-        return
-    message = await audio.skip(ctx.guild.id)
-    await ctx.send(message)
-
-
-@bot.command(name="stop")
-async def stop(ctx: commands.Context):
-    """Stop playback and clear the queue."""
-    if not ctx.guild:
-        await ctx.send("This command can only be used in a server.")
-        return
-    message = await audio.stop(ctx.guild.id)
-    await ctx.send(message)
-
-
-@bot.command(name="leave", aliases=["disconnect", "dc"])
-async def leave(ctx: commands.Context):
-    """Disconnect the bot from voice."""
-    if not ctx.guild:
-        await ctx.send("This command can only be used in a server.")
-        return
-    await audio.leave(ctx.guild.id)
-    await ctx.send("Disconnected.")
-
-
-@bot.command(name="np", aliases=["nowplaying"])
-async def now_playing(ctx: commands.Context):
-    """Display the currently playing track."""
-    if not ctx.guild:
-        await ctx.send("This command can only be used in a server.")
-        return
-    track = audio.now_playing(ctx.guild.id)
-    if not track:
-        await ctx.send("Nothing is playing.")
-        return
-    duration = f" [{track.duration // 60}:{track.duration % 60:02d}]" if track.duration else ""
-    await ctx.send(f"Now playing: **{track.title}**{duration}\n{track.webpage_url}")
-
+# =============================================================================
+# Twitch Commands
+# =============================================================================
 
 @bot.command(name="uptime")
 async def uptime(ctx: commands.Context):
@@ -291,10 +228,281 @@ async def streamgame(ctx: commands.Context):
 
 @bot.command(name="health")
 async def health(ctx: commands.Context):
-    """Check Twitch/Discord integration health."""
+    """Check Twitch/Discord/Spotify integration health."""
     status = await lifecycle.health_check(bot, twitch)
-    await ctx.send(status)
+    spotify_status = await spotify.health_check()
+    combined = f"{status}\n{spotify_status}"
+    await ctx.send(combined[:1990])
 
+
+# =============================================================================
+# Spotify Commands
+# =============================================================================
+
+@bot.command(name="spotify", aliases=["sp", "nowlistening"])
+async def spotify_now(ctx: commands.Context):
+    """Show what's currently playing on Spotify."""
+    track = await spotify.get_current_track()
+    if not track:
+        await ctx.send("Nothing is playing on Spotify right now, or Spotify integration is not configured.")
+        return
+    embed = spotify.create_now_playing_embed(track)
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="spotifysearch", aliases=["spsearch", "searchtrack"])
+async def spotify_search(ctx: commands.Context, *, query: str):
+    """Search for tracks on Spotify."""
+    tracks = await spotify.search_track(query, limit=5)
+    if not tracks:
+        await ctx.send("No tracks found or Spotify integration is not configured.")
+        return
+    
+    lines = ["**Spotify Search Results:**"]
+    for idx, track in enumerate(tracks, start=1):
+        duration_sec = track["duration_ms"] // 1000
+        duration_str = f"{duration_sec // 60}:{duration_sec % 60:02d}"
+        lines.append(f"{idx}. **{track['name']}** by {track['artist']} [{duration_str}]\n   {track['url']}")
+    
+    message = "\n".join(lines)
+    await ctx.send(message[:1990])
+
+
+@bot.command(name="toptracks", aliases=["mytoptracks"])
+async def top_tracks(ctx: commands.Context, timeframe: str = "medium"):
+    """
+    Show your top tracks on Spotify.
+    Timeframe: short (4 weeks), medium (6 months), long (all time)
+    """
+    time_range_map = {
+        "short": "short_term",
+        "medium": "medium_term",
+        "long": "long_term",
+    }
+    time_range = time_range_map.get(timeframe.lower(), "medium_term")
+    
+    tracks = await spotify.get_top_tracks(time_range=time_range, limit=10)
+    if not tracks:
+        await ctx.send("Could not fetch top tracks. Make sure Spotify integration is configured.")
+        return
+    
+    timeframe_display = {"short_term": "4 weeks", "medium_term": "6 months", "long_term": "all time"}
+    lines = [f"**Your Top Tracks ({timeframe_display.get(time_range, 'recent')}):**"]
+    for idx, track in enumerate(tracks, start=1):
+        lines.append(f"{idx}. **{track['name']}** by {track['artist']}\n   {track['url']}")
+    
+    message = "\n".join(lines)
+    await ctx.send(message[:1990])
+
+
+@bot.command(name="topartists", aliases=["mytopartists"])
+async def top_artists(ctx: commands.Context, timeframe: str = "medium"):
+    """
+    Show your top artists on Spotify.
+    Timeframe: short (4 weeks), medium (6 months), long (all time)
+    """
+    time_range_map = {
+        "short": "short_term",
+        "medium": "medium_term",
+        "long": "long_term",
+    }
+    time_range = time_range_map.get(timeframe.lower(), "medium_term")
+    
+    artists = await spotify.get_top_artists(time_range=time_range, limit=10)
+    if not artists:
+        await ctx.send("Could not fetch top artists. Make sure Spotify integration is configured.")
+        return
+    
+    timeframe_display = {"short_term": "4 weeks", "medium_term": "6 months", "long_term": "all time"}
+    lines = [f"**Your Top Artists ({timeframe_display.get(time_range, 'recent')}):**"]
+    for idx, artist in enumerate(artists, start=1):
+        followers_str = f"{artist['followers']:,}" if artist['followers'] > 0 else "N/A"
+        lines.append(f"{idx}. **{artist['name']}** ({artist['genres']})\n   Followers: {followers_str} | {artist['url']}")
+    
+    message = "\n".join(lines)
+    await ctx.send(message[:1990])
+
+
+@bot.command(name="playlists", aliases=["myplaylists", "spotifyplaylists"])
+async def playlists(ctx: commands.Context):
+    """Show your Spotify playlists."""
+    playlists = await spotify.get_playlists(limit=10)
+    if not playlists:
+        await ctx.send("Could not fetch playlists. Make sure Spotify integration is configured.")
+        return
+    
+    lines = ["**Your Spotify Playlists:**"]
+    for idx, playlist in enumerate(playlists, start=1):
+        lines.append(f"{idx}. **{playlist['name']}** by {playlist['owner']}\n   {playlist['tracks']} tracks | {playlist['url']}")
+    
+    message = "\n".join(lines)
+    await ctx.send(message[:1990])
+
+
+# =============================================================================
+# Music Playback Commands (Voice Channel)
+# =============================================================================
+
+@bot.command(name="join", aliases=["connect"])
+async def join_voice(ctx: commands.Context):
+    """Join your current voice channel."""
+    if not isinstance(ctx.author, discord.Member) or not ctx.author.voice or not ctx.author.voice.channel:
+        await ctx.send("You need to be in a voice channel to use this command.")
+        return
+    
+    channel = ctx.author.voice.channel
+    if not isinstance(channel, discord.VoiceChannel):
+        await ctx.send("You need to be in a voice channel (not a stage channel).")
+        return
+    
+    message = await spotify.join_voice(channel)
+    await ctx.send(message)
+
+
+@bot.command(name="leave", aliases=["disconnect", "dc"])
+async def leave_voice(ctx: commands.Context):
+    """Leave the current voice channel."""
+    message = await spotify.leave_voice()
+    await ctx.send(message)
+
+
+@bot.command(name="play", aliases=["p"])
+async def play_music(ctx: commands.Context, *, query: str):
+    """
+    Play a song from Spotify search.
+    Example: !play never gonna give you up
+    """
+    # Auto-join if not connected
+    if not spotify.voice_client or not spotify.voice_client.is_connected():
+        if isinstance(ctx.author, discord.Member) and ctx.author.voice and ctx.author.voice.channel:
+            channel = ctx.author.voice.channel
+            if isinstance(channel, discord.VoiceChannel):
+                await spotify.join_voice(channel)
+            else:
+                await ctx.send("You need to be in a voice channel (not a stage channel).")
+                return
+        else:
+            await ctx.send("You need to be in a voice channel or the bot needs to be connected to one.")
+            return
+    
+    message = await spotify.play_track(query, requester=ctx.author.display_name)
+    await ctx.send(message)
+
+
+@bot.command(name="pause")
+async def pause_music(ctx: commands.Context):
+    """Pause the current playback."""
+    message = await spotify.pause()
+    await ctx.send(message)
+
+
+@bot.command(name="resume", aliases=["unpause"])
+async def resume_music(ctx: commands.Context):
+    """Resume paused playback."""
+    message = await spotify.resume()
+    await ctx.send(message)
+
+
+@bot.command(name="skip", aliases=["next", "s"])
+async def skip_music(ctx: commands.Context):
+    """Skip the current track."""
+    message = await spotify.skip()
+    await ctx.send(message)
+
+
+@bot.command(name="stop")
+async def stop_music(ctx: commands.Context):
+    """Stop playback and clear the queue."""
+    message = await spotify.stop_playback()
+    await ctx.send(message)
+
+
+@bot.command(name="loop", aliases=["repeat"])
+async def loop_music(ctx: commands.Context, mode: str = "off"):
+    """
+    Set loop mode.
+    Modes: off, track, queue
+    Example: !loop track
+    """
+    message = await spotify.set_loop(mode)
+    await ctx.send(message)
+
+
+@bot.command(name="volume", aliases=["vol", "v"])
+async def set_volume(ctx: commands.Context, volume: int):
+    """
+    Set playback volume (0-100).
+    Example: !volume 50
+    """
+    message = await spotify.set_volume(volume)
+    await ctx.send(message)
+
+
+@bot.command(name="queue", aliases=["q"])
+async def show_queue(ctx: commands.Context):
+    """Show the current music queue."""
+    embed = spotify.create_queue_embed()
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="nowplaying", aliases=["np", "current"])
+async def now_playing(ctx: commands.Context):
+    """Show the currently playing track in voice."""
+    if not spotify.current_track:
+        await ctx.send("Nothing is currently playing.")
+        return
+    
+    track = spotify.current_track
+    embed = discord.Embed(
+        title="🎵 Now Playing",
+        description=f"**{track['name']}**",
+        color=discord.Color.green(),
+        url=track['url'],
+    )
+    
+    embed.add_field(name="Artist", value=track['artist'], inline=True)
+    embed.add_field(name="Album", value=track.get('album', 'Unknown'), inline=True)
+    
+    if track.get('duration_ms'):
+        duration_sec = track['duration_ms'] // 1000
+        duration_str = f"{duration_sec // 60}:{duration_sec % 60:02d}"
+        embed.add_field(name="Duration", value=duration_str, inline=True)
+    
+    if track.get('requester'):
+        embed.add_field(name="Requested by", value=track['requester'], inline=True)
+    
+    embed.set_footer(text="Spotify Music Player")
+    
+    await ctx.send(embed=embed)
+
+
+@bot.command(name="clearqueue", aliases=["cq", "clear"])
+async def clear_queue(ctx: commands.Context):
+    """Clear the music queue."""
+    message = await spotify.clear_queue()
+    await ctx.send(message)
+
+
+@bot.command(name="remove", aliases=["rm"])
+async def remove_from_queue(ctx: commands.Context, position: int):
+    """
+    Remove a track from the queue by position.
+    Example: !remove 3
+    """
+    message = await spotify.remove_from_queue(position)
+    await ctx.send(message)
+
+
+@bot.command(name="shuffle")
+async def shuffle_queue(ctx: commands.Context):
+    """Shuffle the music queue."""
+    message = await spotify.shuffle_queue()
+    await ctx.send(message)
+
+
+# =============================================================================
+# Bot Management Commands
+# =============================================================================
 
 @bot.command(name="reloadext")
 @commands.has_permissions(manage_guild=True)
@@ -316,10 +524,14 @@ async def reloadext(ctx: commands.Context, *extensions: str):
 async def shutdown(ctx: commands.Context):
     """Gracefully shut down the bot (manage_guild only)."""
     await ctx.send("Shutting down...")
+    await spotify.stop()
     await lifecycle.graceful_shutdown(bot, twitch)
 
 
-# --- Moderation commands -----------------------------------------------------
+# =============================================================================
+# Moderation Commands
+# =============================================================================
+
 @bot.command(name="warn")
 async def warn(ctx: commands.Context, member: discord.Member, *, reason: str = "No reason provided"):
     """Warn a user (mods/admins)."""
@@ -407,7 +619,10 @@ async def unlock(ctx: commands.Context):
     await ctx.send(msg)
 
 
-# --- Fun/games ---------------------------------------------------------------
+# =============================================================================
+# Fun & Games Commands
+# =============================================================================
+
 @bot.command(name="roll")
 async def roll(ctx: commands.Context, expression: str):
     """Roll dice, e.g., 2d6+1."""
@@ -452,7 +667,10 @@ async def poll(ctx: commands.Context, *, payload: str):
     await ctx.send(content)
 
 
-# --- Notifications -----------------------------------------------------------
+# =============================================================================
+# Notification Commands
+# =============================================================================
+
 @bot.command(name="announce")
 async def announce(ctx: commands.Context, *, content: str):
     await send_announcement(ctx.channel, content)
@@ -483,7 +701,10 @@ async def tempmsg(ctx: commands.Context, duration: str, *, content: str):
     await temporary_message(ctx.channel, content, seconds)
 
 
-# --- Maintenance / config ----------------------------------------------------
+# =============================================================================
+# Server Configuration & Maintenance Commands
+# =============================================================================
+
 @bot.command(name="backup")
 @commands.has_permissions(administrator=True)
 async def backup(ctx: commands.Context):
@@ -522,7 +743,10 @@ async def setleave(ctx: commands.Context, channel: discord.TextChannel):
     await ctx.send(f"Leave channel set to {channel.mention}")
 
 
-# --- Storage / API -----------------------------------------------------------
+# =============================================================================
+# API & Storage Commands
+# =============================================================================
+
 @bot.command(name="fetchjson")
 async def fetchjson(ctx: commands.Context, url: str):
     """Fetch JSON from a URL (GET) and show a truncated response."""

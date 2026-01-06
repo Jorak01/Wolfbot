@@ -8,3 +8,4 @@ duckduckgo-search
 yt-dlp
 websockets
 duckduckgo_search
+spotipy

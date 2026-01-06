@@ -99,7 +99,28 @@ The response contains your `"id"` - that's your broadcaster ID
 
 ---
 
-## Step 4: Discord Server IDs (For Twitch Integration) 🆔
+## Step 4: Spotify Integration (OPTIONAL) 🎵
+
+**What it enables:** Music search, playback in voice channels, view your Spotify stats, playlists
+
+See the detailed [SPOTIFY_SETUP_GUIDE.md](SPOTIFY_SETUP_GUIDE.md) for complete instructions.
+
+**Quick setup:**
+
+1. Go to [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)
+2. Create an application
+3. Copy **Client ID** → paste in `.env` after `SPOTIFY_CLIENT_ID=`
+4. Click **"Show Client Secret"** → paste in `.env` after `SPOTIFY_CLIENT_SECRET=`
+5. Add redirect URI: `http://localhost:8888/callback`
+6. Follow the [SPOTIFY_SETUP_GUIDE.md](SPOTIFY_SETUP_GUIDE.md) to get your refresh token
+
+**Required for voice playback:**
+- Install FFmpeg: [Download here](https://ffmpeg.org/download.html)
+- Add FFmpeg to your system PATH
+
+---
+
+## Step 5: Discord Server IDs (For Twitch Integration) 🆔
 
 ### Enable Developer Mode First:
 1. Open Discord
