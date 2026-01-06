@@ -4,7 +4,10 @@ This file provides backward compatibility for existing code.
 """
 
 import os
-from api_manager import api_manager
+try:
+    from src.api_manager import api_manager
+except ImportError:
+    from api_manager import api_manager
 
 __all__ = [
     "require_token",

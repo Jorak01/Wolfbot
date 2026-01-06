@@ -4,7 +4,10 @@ Integration layer for external services or business logic.
 
 from typing import Any, Dict, List
 
-from config import SEARCH_MAX_RESULTS
+try:
+    from src.config import SEARCH_MAX_RESULTS
+except ImportError:
+    from config import SEARCH_MAX_RESULTS
 
 
 async def call_api(endpoint: str, **kwargs) -> Any:
